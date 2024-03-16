@@ -1,0 +1,21 @@
+.container {
+  display: flex;
+  flex-direction: row; /* Arrange items in a row */
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Set the container height to full viewport height */
+}
+
+
+.card {
+  margin: 10px; /* Add margin between cards */
+}
+
+.chat-box {
+  background-color: #f0f0f0; /* Example background color */
+  width: auto;
+}
+
+.camera {
+  background-color: #f0f0f0; /* Example background color */
+}
