@@ -10,45 +10,58 @@ import {
   IonToolbar,
 } from "@ionic/react";
 import ExploreContainer from "../components/ExploreContainer";
+import axios from "axios";
 import "./Tab2.css";
 import React, { useState, useEffect, useRef } from "react";
 const Tab2: React.FC = () => {
-  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const startCamera = async () => {
+    const fetchVideoStream = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        const response = await fetch("/video_feed");
+        if (!response.ok) {
+          throw new Error("Failed to fetch video stream");
         }
-        setStream(stream);
-        setIsCameraActive(true);
+        const mediaStream = new MediaStream();
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+        const reader = response.body?.getReader(); // Null check for response.body
+
+        if (reader) {
+          // Ensure reader is not null before proceeding
+          const processStream = async () => {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              const uint8Array = new Uint8Array(value);
+              const blob = new Blob([uint8Array], { type: "video/webm" }); // Assuming the video type is 'video/webm'
+              const videoURL = URL.createObjectURL(blob);
+              if (videoRef.current) {
+                videoRef.current.src = videoURL;
+              }
+            }
+          };
+
+          processStream();
+        } else {
+          throw new Error("Response body is null");
+        }
       } catch (error) {
-        console.error("Error accessing the camera:", error);
+        console.error("Error fetching video stream:", error);
       }
     };
 
-    const stopCamera = () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-        setStream(null);
-        setIsCameraActive(false);
-      }
-    };
-
-    if (isCameraActive) {
-      startCamera();
-    }
+    fetchVideoStream();
 
     return () => {
-      stopCamera(); // Clean up when component unmounts
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     };
-  }, [isCameraActive]); // Run when isCameraActive changes
+  }, []);
+
   return (
     <IonPage>
       <IonHeader>
@@ -76,18 +89,7 @@ const Tab2: React.FC = () => {
           </div>
           <IonCard className="card camera">
             <IonCardContent>
-              {isCameraActive ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  style={{ width: "100%", height: "auto" }}
-                />
-              ) : (
-                <p>Camera is not available</p>
-              )}
-              <IonButton onClick={() => setIsCameraActive((active) => !active)}>
-                {isCameraActive ? "Stop Camera" : "Start Camera"}
-              </IonButton>
+              <video ref={videoRef} autoPlay controls></video>
             </IonCardContent>
           </IonCard>
         </div>
